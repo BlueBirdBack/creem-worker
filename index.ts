@@ -378,6 +378,79 @@ export default function register(api: any) {
     }
   });
 
+  // ── Natural Language Query Tool ─────────────────────────────────────
+
+  api.registerGatewayMethod("creem.query", async ({ respond, params }: any) => {
+    try {
+      // Gather all store data for the agent to reason over
+      const stats = await client.getStatsSummary().catch(() => null);
+      const txResp = await client.getTransactions({ pageSize: 20 }).catch(() => ({ items: [] }));
+      const custResp = await client.getCustomers({ pageSize: 20 }).catch(() => ({ items: [] }));
+      const prodResp = await client.getProducts({ pageSize: 20 }).catch(() => ({ items: [] }));
+      const state = loadState(statePath);
+
+      const storeData = {
+        summary: stats?.totals ?? {},
+        recentTransactions: (txResp.items ?? []).map((tx: any) => ({
+          id: tx.id,
+          amount: tx.amount,
+          currency: tx.currency,
+          status: tx.status,
+          product: tx.product?.name,
+          customer: tx.customer?.email,
+          created_at: tx.created_at,
+          subscription: tx.subscription,
+        })),
+        customers: (custResp.items ?? []).map((c: any) => ({
+          id: c.id,
+          email: c.email,
+          name: c.name,
+          country: c.country,
+          created_at: c.created_at,
+        })),
+        products: (prodResp.items ?? []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          currency: p.currency,
+          billing_type: p.billing_type,
+          billing_period: p.billing_period,
+        })),
+        subscriptionCounts: state.subscriptions,
+        lastCheck: state.lastCheckAt,
+        mode: testMode ? "test" : "live",
+      };
+
+      respond(true, storeData);
+    } catch (e: any) {
+      respond(false, { error: e.message });
+    }
+  });
+
+  // ── Agent Context Provider ────────────────────────────────────────────
+  // Provides store context so the LLM can answer natural language questions
+  // about revenue, customers, subscriptions, etc.
+
+  api.on?.("agent:context", async () => {
+    try {
+      const stats = await client.getStatsSummary().catch(() => null);
+      const state = loadState(statePath);
+      if (!stats) return "";
+
+      const t = stats.totals;
+      return [
+        `[Creem Store Context — ${testMode ? "TEST" : "LIVE"} mode]`,
+        `Products: ${t.totalProducts} | Customers: ${t.totalCustomers}`,
+        `Revenue: $${(t.totalRevenue / 100).toFixed(2)} | MRR: $${(t.monthlyRecurringRevenue / 100).toFixed(2)}`,
+        `Active subscriptions: ${t.activeSubscriptions} | Payments: ${t.totalPayments}`,
+        `Last check: ${state.lastCheckAt ?? "never"}`,
+        `Ask me about revenue, customers, subscriptions, or recent transactions.`,
+      ].join("\n");
+    } catch {
+      return "";
+    }
+  });
+
   // ── Done ───────────────────────────────────────────────────────────────
 
   const mode = testMode ? "🧪 TEST" : "🔴 LIVE";

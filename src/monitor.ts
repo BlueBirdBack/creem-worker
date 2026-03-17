@@ -22,7 +22,7 @@ import type {
 
 const EMPTY_SUBS: Record<SubscriptionStatus, number> = {
   active: 0, trialing: 0, past_due: 0, paused: 0,
-  canceled: 0, expired: 0,
+  canceled: 0, expired: 0, scheduled_cancel: 0,
 };
 
 function emptySnapshot(): StoreSnapshot {

@@ -13,6 +13,7 @@ import type {
   CreemPagination,
   CreemStatsSummary,
   SubscriptionStatus,
+  ApiSubscriptionStatus,
 } from "./types.ts";
 
 export interface CreemClientOptions {
@@ -79,8 +80,8 @@ export class CreemClient {
   }
 
   async getAllSubscriptions(): Promise<Record<SubscriptionStatus, CreemSubscription[]>> {
-    // Only query valid API statuses — scheduled_cancel is webhook-only, not a query param
-    const statuses: SubscriptionStatus[] = [
+    // Only query API-valid statuses — scheduled_cancel is webhook-only, tracked in state
+    const statuses: ApiSubscriptionStatus[] = [
       "active", "trialing", "past_due", "paused",
       "canceled", "expired",
     ];

@@ -39,17 +39,21 @@ export interface CreemTransaction {
   created_at: string;
 }
 
-/** Valid Creem API subscription statuses (queryable via /subscriptions/search) */
+/** Creem subscription statuses — used in state tracking per creem.io/HEARTBEAT.md spec */
 export type SubscriptionStatus =
   | "active"
   | "trialing"
   | "past_due"
   | "paused"
   | "canceled"
-  | "expired";
+  | "expired"
+  | "scheduled_cancel";
+
+/** Statuses that are queryable via /subscriptions/search API */
+export type ApiSubscriptionStatus = Exclude<SubscriptionStatus, "scheduled_cancel">;
 
 /** Webhook-only event types that look like statuses but aren't queryable */
-export type WebhookEventStatus = SubscriptionStatus | "scheduled_cancel" | "paid" | "update";
+export type WebhookEventStatus = SubscriptionStatus | "paid" | "update";
 
 export interface CreemSubscription {
   id: string;
