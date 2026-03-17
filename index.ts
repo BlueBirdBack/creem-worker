@@ -21,7 +21,7 @@ import { CreemClient } from "./src/api.ts";
 import { checkForChanges, calculateMRR, loadState, saveState } from "./src/monitor.ts";
 import { fmtChangeSet, fmtDailyDigest, type DailyDigestData } from "./src/alerts.ts";
 import { createWebhookServer, webhookEventToAlertText, type CreemWebhookEvent } from "./src/webhook.ts";
-import { setupDb, logTransaction, logSubscriptionEvent, saveDailySnapshot, getDayRevenue, cleanupOldData, getKv, setKv } from "./src/db.ts";
+import { setupDb, logTransaction, logSubscriptionEvent, saveDailySnapshot, getDayRevenue, getRecentSnapshots, cleanupOldData, getKv, setKv } from "./src/db.ts";
 import { handleCreem, handleCreemStats, handleCreemHealth, handleCreemRevenue } from "./src/commands.ts";
 import type { CreemWorkerConfig, DEFAULT_CONFIG, SubscriptionStatus } from "./src/types.ts";
 
@@ -94,6 +94,7 @@ export default function register(api: any) {
           customerId: tx.customer?.id,
           customerEmail: tx.customer?.email,
           subscriptionId: tx.subscription_id,
+          createdAt: tx.created_at,
         });
       }
 
@@ -168,17 +169,31 @@ export default function register(api: any) {
       const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
       const dayRev = getDayRevenue(db, today);
-      const prevState = loadState(statePath);
+
+      // Get yesterday's snapshot from SQLite for real comparison
+      const yesterdaySnapshots = getRecentSnapshots(db, 2);
+      const yesterdaySnap = yesterdaySnapshots.find((s: any) => s.date === yesterdayStr);
+      const prevMrr = yesterdaySnap?.mrr_cents ?? 0;
+      const prevCustomerCount = yesterdaySnap?.customer_count ?? 0;
+
+      const prevSubscriptions: Record<string, number> = {
+        active: yesterdaySnap?.active_subs ?? 0,
+        trialing: yesterdaySnap?.trialing_subs ?? 0,
+        past_due: yesterdaySnap?.past_due_subs ?? 0,
+        paused: yesterdaySnap?.paused_subs ?? 0,
+        canceled: yesterdaySnap?.canceled_subs ?? 0,
+        expired: yesterdaySnap?.expired_subs ?? 0,
+      };
 
       const digestData: DailyDigestData = {
         date: today,
         transactionCount: dayRev.count,
         revenue: dayRev.cents,
-        newCustomers: 0,  // will be enriched by monitor
+        newCustomers: Math.max(0, (state.customerCount ?? 0) - prevCustomerCount),
         subscriptions: state.subscriptions,
-        prevSubscriptions: prevState.subscriptions ?? {} as any,
+        prevSubscriptions: prevSubscriptions as any,
         mrr,
-        mrrChange: 0,  // TODO: compare with yesterday's snapshot
+        mrrChange: mrr - prevMrr,
       };
 
       const digestText = fmtDailyDigest(digestData);
@@ -243,12 +258,23 @@ export default function register(api: any) {
             customerId: obj.customer?.id,
             customerEmail: obj.customer?.email,
             subscriptionId: obj.subscription?.id,
+            createdAt: event.created_at ? new Date(event.created_at).toISOString() : undefined,
           });
         }
 
         if (event.eventType.startsWith("subscription.")) {
           const obj = event.object as any;
-          const newStatus = event.eventType.replace("subscription.", "") as string;
+          // Map webhook event types to valid API statuses where possible
+          const eventToStatus: Record<string, string> = {
+            "subscription.active": "active",
+            "subscription.paid": "active",          // paid = still active
+            "subscription.canceled": "canceled",
+            "subscription.scheduled_cancel": "canceled",  // will cancel, treat as canceled for tracking
+            "subscription.past_due": "past_due",
+            "subscription.expired": "expired",
+            "subscription.update": obj.status ?? "active",  // use actual status from payload
+          };
+          const newStatus = eventToStatus[event.eventType] ?? obj.status ?? "active";
           logSubscriptionEvent(db, {
             subscriptionId: obj.id ?? event.id,
             customerEmail: obj.customer?.email,
