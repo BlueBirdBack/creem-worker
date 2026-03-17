@@ -1,0 +1,71 @@
+{
+  "name": "creem-worker",
+  "id": "creem-worker",
+  "version": "1.0.0",
+  "description": "Autonomous Creem store monitor \u2014 smart alerts, MRR tracking, revenue analytics via Telegram",
+  "author": "Ash & Six",
+  "license": "MIT",
+  "entry": "index.ts",
+  "type": "extension",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "apiKey": {
+        "type": "string",
+        "description": "Creem API key (creem_ for prod, creem_test_ for sandbox)"
+      },
+      "testMode": {
+        "type": "boolean",
+        "description": "Use test API (test-api.creem.io)",
+        "default": false
+      },
+      "pollIntervalMs": {
+        "type": "number",
+        "description": "Polling interval in milliseconds",
+        "default": 300000
+      },
+      "alertChatId": {
+        "type": "string",
+        "description": "Telegram chat ID for alerts"
+      },
+      "dbPath": {
+        "type": "string",
+        "description": "SQLite database path",
+        "default": "/opt/creem-worker/creem.db"
+      },
+      "statePath": {
+        "type": "string",
+        "description": "Snapshot state file path",
+        "default": "/opt/creem-worker/state.json"
+      },
+      "dailyDigestHour": {
+        "type": "number",
+        "description": "Hour (0-23) to send daily digest",
+        "default": 9
+      },
+      "mrrAlerts": {
+        "type": "boolean",
+        "description": "Enable MRR change alerts",
+        "default": true
+      },
+      "webhookSecret": {
+        "type": "string",
+        "description": "Creem webhook HMAC secret (from Developers > Webhook). If empty, webhook listener is disabled."
+      },
+      "webhookPort": {
+        "type": "number",
+        "description": "Webhook listener port",
+        "default": 9444
+      },
+      "webhookPath": {
+        "type": "string",
+        "description": "Webhook URL path",
+        "default": "/webhook/creem"
+      }
+    },
+    "required": [
+      "apiKey"
+    ]
+  }
+}
