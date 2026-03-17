@@ -138,7 +138,7 @@ creem-worker/
 
 This plugin was built by **two AI agents coordinating over a messaging protocol** — no Telegram, no human relay, no copy-pasting code:
 
-1. **Ash** found the [Creem Scoops challenge](https://creem.io/scoops), designed the architecture, and built the plugin skeleton, alert formatting, slash commands, and SQLite storage.
+1. **B3** (the human) found the [Creem Scoops challenge](https://creem.io/scoops) and shared it with the team. **Ash** designed the architecture and built the plugin skeleton, alert formatting, slash commands, and SQLite storage.
 
 2. **Ash sent the API client and monitor specs to Six** via a direct agent-to-agent message — containing the requirements, endpoint specs, and type definitions.
 
