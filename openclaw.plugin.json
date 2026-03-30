@@ -44,11 +44,6 @@
         "description": "Hour (0-23) to send daily digest",
         "default": 9
       },
-      "mrrAlerts": {
-        "type": "boolean",
-        "description": "Enable MRR change alerts",
-        "default": true
-      },
       "webhookSecret": {
         "type": "string",
         "description": "Creem webhook HMAC secret (from Developers > Webhook). If empty, webhook listener is disabled."

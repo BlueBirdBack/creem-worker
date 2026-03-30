@@ -62,7 +62,6 @@ export default function register(api: any) {
   const dbPath         = (cfg.dbPath as string) ?? "/opt/creem-worker/creem.db";
   const statePath      = (cfg.statePath as string) ?? "/opt/creem-worker/state.json";
   const digestHour     = (cfg.dailyDigestHour as number) ?? 9;
-  const mrrAlerts      = (cfg.mrrAlerts as boolean) ?? true;
   const webhookSecret  = (cfg.webhookSecret as string) ?? "";
   const webhookPort    = (cfg.webhookPort as number) ?? 9444;
   const webhookPath    = (cfg.webhookPath as string) ?? "/webhook/creem";
@@ -70,6 +69,10 @@ export default function register(api: any) {
   if (!apiKey) {
     api.logger.warn("creem-worker: no apiKey configured — plugin disabled");
     return;
+  }
+
+  if (!alertChatId) {
+    api.logger.warn("creem-worker: no alertChatId configured — Telegram alerts will not be sent. Set alertChatId in plugin config.");
   }
 
   const client = new CreemClient({ apiKey, testMode });
