@@ -30,6 +30,7 @@ export interface CreemWebhookEvent {
 export type CreemEventType =
   | "checkout.completed"
   | "subscription.active"
+  | "subscription.trialing"
   | "subscription.paid"
   | "subscription.canceled"
   | "subscription.scheduled_cancel"
@@ -52,6 +53,7 @@ export interface WebhookServerOptions {
 const EVENT_SEVERITY: Record<string, "info" | "warn" | "critical"> = {
   "checkout.completed":            "info",
   "subscription.active":           "info",
+  "subscription.trialing":          "info",
   "subscription.paid":             "info",
   "subscription.update":           "info",
   "subscription.scheduled_cancel": "warn",
@@ -95,6 +97,7 @@ export function webhookEventToAlertText(event: CreemWebhookEvent): string {
       return `💰 New Sale (webhook)\nProduct: ${product} ($${amount.toFixed(2)} ${currency})\nCustomer: ${customer}`;
     }
     case "subscription.active":
+    case "subscription.trialing":
     case "subscription.paid":
       return `✅ Subscription Payment\nCustomer: ${customer}\nProduct: ${product}\nStatus: active`;
 
