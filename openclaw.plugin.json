@@ -57,6 +57,11 @@
         "type": "string",
         "description": "Webhook URL path",
         "default": "/webhook/creem"
+      },
+      "mrrAlerts": {
+        "type": "boolean",
+        "description": "Enable MRR change alerts",
+        "default": true
       }
     },
     "required": [
