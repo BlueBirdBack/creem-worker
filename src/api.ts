@@ -80,32 +80,39 @@ export class CreemClient {
   }
 
   async getAllSubscriptions(): Promise<Record<SubscriptionStatus, CreemSubscription[]>> {
-    // Only query API-valid statuses — scheduled_cancel is webhook-only, tracked in state
-    const statuses: ApiSubscriptionStatus[] = [
+    const statuses: SubscriptionStatus[] = [
       "active", "trialing", "past_due", "paused",
-      "canceled", "expired",
+      "canceled", "expired", "scheduled_cancel",
     ];
 
+    // Initialize empty buckets
     const results = {} as Record<SubscriptionStatus, CreemSubscription[]>;
+    for (const s of statuses) results[s] = [];
 
-    // Serialize to avoid rate limits (6 calls)
-    for (const status of statuses) {
-      try {
-        const resp = await this.getSubscriptionsByStatus(status);
-        // Follow pagination to get ALL subscriptions, not just page 1
-        let allItems = resp.items ?? [];
-        let nextPage = resp.pagination?.next_page;
-        while (nextPage) {
-          const more = await this.request<{ items: CreemSubscription[]; pagination: CreemPagination }>(
-            "/subscriptions/search", { status, page_number: String(nextPage) }
-          );
-          allItems = allItems.concat(more.items ?? []);
-          nextPage = more.pagination?.next_page;
-        }
-        results[status] = allItems;
-      } catch {
-        results[status] = [];
+    // Fetch ALL subs in one call (Creem /subscriptions/search does not accept ?status=)
+    try {
+      let allItems: CreemSubscription[] = [];
+      const resp = await this.request<{ items: CreemSubscription[]; pagination: CreemPagination }>(
+        "/subscriptions/search"
+      );
+      allItems = resp.items ?? [];
+      let nextPage = resp.pagination?.next_page;
+      while (nextPage) {
+        const more = await this.request<{ items: CreemSubscription[]; pagination: CreemPagination }>(
+          "/subscriptions/search", { page_number: String(nextPage) }
+        );
+        allItems = allItems.concat(more.items ?? []);
+        nextPage = more.pagination?.next_page;
       }
+
+      // Group by status client-side
+      for (const sub of allItems) {
+        const s = (sub.status ?? "active") as SubscriptionStatus;
+        if (results[s]) results[s].push(sub);
+        else results[s] = [sub];
+      }
+    } catch {
+      // If the endpoint fails entirely, all buckets stay empty
     }
 
     return results;
